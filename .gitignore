@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.env
+coverage/
+releaseguard-reports/
+docs/*.mp4
+docs/*.pptx
+docs/*.ndjson
