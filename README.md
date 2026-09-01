@@ -2,6 +2,8 @@
 
 ReleaseGuard AI is an evidence-first release readiness agent for the **Alexa+ primary track** and **AWS Builder mini-challenge** of the 2026 Amazon Build, Ship, Shape Hackathon.
 
+[Watch the 1:52 demo](https://youtu.be/8FaILFxt_Do) · [View the submitted Devpost project](https://devpost.com/software/releaseguard-ai-8gri2d)
+
 Ask: “Is version 2.8 safe to release?” ReleaseGuard runs or accepts concrete build, API, browser, visual, performance, and security evidence; groups related regressions; and returns a defensible `SHIP`, `REVIEW`, or `HOLD` recommendation.
 
 ![ReleaseGuard AI architecture](docs/architecture.svg)
