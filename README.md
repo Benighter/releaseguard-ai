@@ -24,11 +24,14 @@ ReleaseGuard deliberately does not expose arbitrary shell execution through MCP.
 
 ## Run locally
 
-Requirements: Node.js 20 or newer.
+Requirements: Node.js 20 or newer and Google Chrome installed locally. The demo uses
+`playwright-core` with the Chrome channel, so installing npm dependencies does not
+install a browser.
 
 ```bash
 npm install
-npm run dev
+npm run build
+npm start
 ```
 
 Open `http://127.0.0.1:3210`.
