@@ -2,7 +2,7 @@
 
 ReleaseGuard AI is an evidence-first release readiness agent for the **Alexa+ primary track** and **AWS Builder mini-challenge** of the 2026 Amazon Build, Ship, Shape Hackathon.
 
-[Watch the 1:52 demo](https://youtu.be/8FaILFxt_Do) · [View the submitted Devpost project](https://devpost.com/software/releaseguard-ai-8gri2d)
+[Watch the redesigned 1:12 demo](docs/demo/releaseguard-redesign-demo.mp4) · [Original 1:52 demo](https://youtu.be/8FaILFxt_Do) · [View the submitted Devpost project](https://devpost.com/software/releaseguard-ai-8gri2d)
 
 Ask: “Is version 2.8 safe to release?” ReleaseGuard runs or accepts concrete build, API, browser, visual, performance, and security evidence; groups related regressions; and returns a defensible `SHIP`, `REVIEW`, or `HOLD` recommendation.
 
@@ -36,8 +36,11 @@ npm start
 
 Open `http://127.0.0.1:3210`.
 
-1. Select **Run failing RC.1**. A real API check receives HTTP 500, Playwright finds the checkout button disabled, and ReleaseGuard returns `HOLD`.
-2. Select **Verify fixed RC.2**. The API returns HTTP 201, the browser completes checkout, and ReleaseGuard returns `SHIP`.
+1. Select candidate **2.8.0-rc.1** and choose **Check release**. The web client connects automatically, acknowledges initialization, discovers the tools, and calls `run_demo_release` through MCP. A real API check receives HTTP 500, Playwright finds the checkout button disabled, and ReleaseGuard returns `HOLD`.
+2. Select candidate **2.8.0-rc.2** and choose **Check release** again. The API returns HTTP 201, the browser completes checkout, and ReleaseGuard returns `SHIP`.
+3. Inspect the evidence table, then expand **Related findings**, **Browser capture**, or **Protocol activity** for more detail.
+
+These are seeded local checkout candidates. The live tool verifies the compiled artifact's presence and runs real API, browser, and duration checks. It does not run a project's full CI suite or publish a release. Each run captures a fresh screenshot; transport errors clear the preceding verdict instead of leaving stale success visible. Bedrock is disabled by the web client.
 
 MCP endpoint: `http://127.0.0.1:3210/mcp`
 
@@ -63,7 +66,25 @@ npm run check
 npm start
 # in another terminal
 npm run smoke:mcp
+npm run verify:demo
+npm run verify:browser
 ```
+
+`verify:demo` uses the actual MCP SDK client to run both checkout candidates and
+requires RC.1 `HOLD` followed by RC.2 `SHIP`. `verify:browser` checks the dashboard's
+actual MCP requests, keyboard operation, light and dark layouts, and narrow screens.
+It also verifies that an injected transport error clears a previous success;
+that negative test is never part of the recording.
+
+For a continuous browser recording, install Playwright's free FFmpeg helper with
+`node node_modules/playwright-core/cli.js install ffmpeg`, then run
+`npm run record:demo` while the server is running. The recording uses installed
+Chrome, sends real MCP calls, and includes the resulting checkout screenshots.
+No responses are intercepted or mocked during recording. Set
+`RELEASEGUARD_EVIDENCE_DIR` to a fresh directory for each verification or recording;
+the script refuses to overwrite an earlier run. `RELEASEGUARD_MCP_URL` and
+`RELEASEGUARD_DEMO_URL` can select another localhost port. Keep
+`RELEASEGUARD_USE_BEDROCK=0` for this demo.
 
 ## Safety model
 

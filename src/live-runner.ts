@@ -1,4 +1,5 @@
 import { existsSync, mkdirSync } from "node:fs";
+import { randomUUID } from "node:crypto";
 import { basename, resolve } from "node:path";
 import { chromium } from "playwright-core";
 import { addBedrockNarrative } from "./bedrock.js";
@@ -67,10 +68,11 @@ export async function runDemoRelease(options: {
 
   const reportsDirectory = resolve(process.cwd(), "releaseguard-reports");
   mkdirSync(reportsDirectory, { recursive: true });
-  const screenshotName = `checkout-${options.version}.png`;
+  const screenshotName = `checkout-${options.version}-${randomUUID()}.png`;
   const screenshotPath = resolve(reportsDirectory, screenshotName);
   const browserStarted = performance.now();
   let browser;
+  let screenshotCaptured = false;
 
   try {
     browser = await chromium.launch({ channel: "chrome", headless: true });
@@ -91,6 +93,7 @@ export async function runDemoRelease(options: {
       browserPassed = true;
     }
     await page.screenshot({ path: screenshotPath, fullPage: true });
+    screenshotCaptured = true;
     checks.push({
       name: "Guest checkout journey",
       category: "browser",
@@ -124,14 +127,14 @@ export async function runDemoRelease(options: {
 
   const deterministic = assessRelease({
     version: options.version,
-    commit: options.version.endsWith("rc.1") ? "b7e41d9" : "ca82f10",
+    commit: options.version.endsWith("rc.1") ? "local-demo-rc.1" : "local-demo-rc.2",
     environment: "local-demo",
     checks,
   });
   const withArtifacts: ReleaseAssessment = {
     ...deterministic,
     artifacts: {
-      screenshotUrl: existsSync(screenshotPath) ? `/reports/${screenshotName}` : undefined,
+      screenshotUrl: screenshotCaptured ? `/reports/${screenshotName}` : undefined,
       logs,
     },
   };

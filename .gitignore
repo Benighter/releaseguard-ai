@@ -1,4 +1,6 @@
 node_modules/
+demo-evidence*/
+demo-recording*/
 dist/
 .env
 coverage/

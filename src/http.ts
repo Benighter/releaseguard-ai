@@ -82,6 +82,12 @@ export function appFetch(request: Request): Promise<Response> | Response {
     return new Response(null, { status: 204 });
   }
 
+  if (url.pathname === "/assets/dashboard-mcp-client.js" && request.method === "GET") {
+    return readFile(resolve(process.cwd(), "dist", "src", "dashboard-mcp-client.js"), "utf8")
+      .then((content) => new Response(content, { headers: { "content-type": "text/javascript; charset=utf-8" } }))
+      .catch(() => new Response("Build the dashboard client first.", { status: 503 }));
+  }
+
   if (url.pathname === "/") {
     return new Response(dashboardHtml, {
       headers: { "content-type": "text/html; charset=utf-8" },
@@ -91,7 +97,7 @@ export function appFetch(request: Request): Promise<Response> | Response {
   return new Response("Not found", { status: 404 });
 }
 
-serve({ fetch: appFetch, port }, (info) => {
+serve({ fetch: appFetch, port, hostname: "127.0.0.1" }, (info) => {
   console.log(`ReleaseGuard AI is running at http://127.0.0.1:${info.port}`);
   console.log(`MCP endpoint: http://127.0.0.1:${info.port}/mcp`);
 });
