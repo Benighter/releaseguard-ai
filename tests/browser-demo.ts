@@ -4,6 +4,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { chromium, type BrowserContext } from "playwright-core";
 import type { ReleaseAssessment } from "../src/domain.js";
+import { auditReview } from "./review-accessibility.js";
 
 const record = process.argv.includes("--record");
 const baseUrl = process.env.RELEASEGUARD_DEMO_URL ?? "http://127.0.0.1:3210";
@@ -68,6 +69,13 @@ try {
     assert.equal(await page.locator("#run").evaluate((element) => getComputedStyle(element).outlineWidth), "3px");
     await page.keyboard.press("Enter");
   }
+  if (!record) {
+    await page.waitForFunction(() => document.getElementById("decision-section")?.getAttribute("aria-busy") === "true");
+    assert.equal(await page.locator("#run").isDisabled(), true);
+    assert.equal(await page.locator("#candidate").isDisabled(), true);
+    assert.equal(await page.locator("#risk-display").isVisible(), false);
+    await page.screenshot({ path: resolve(outputDir, "dashboard-loading.png"), fullPage: true });
+  }
   await page.waitForFunction(() => document.getElementById("verdict")?.textContent === "HOLD", undefined, { timeout: 30_000 });
   assert.match(await page.locator("#mcp-status").textContent() ?? "", /^Connected · MCP/);
   assert.match(await page.locator("#mcp-trace").textContent() ?? "", /initialize.*response.*2025-11-25/);
@@ -90,6 +98,8 @@ try {
 
   if (record) {
     await page.locator("#candidate").selectOption("2.8.0-rc.2");
+    assert.equal(await page.locator("#verdict").textContent(), "No review yet");
+    assert.equal(await page.locator("#risk-display").isVisible(), false);
     await page.getByRole("button", { name: "Check release", exact: true }).scrollIntoViewIfNeeded();
     await pause(3_000);
     await page.getByRole("button", { name: "Check release", exact: true }).click();
@@ -97,6 +107,11 @@ try {
     await page.locator("#candidate").focus();
     await page.keyboard.press("ArrowDown");
     assert.equal(await page.locator("#candidate").inputValue(), "2.8.0-rc.2");
+    assert.equal(await page.locator("#verdict").textContent(), "No review yet");
+    assert.equal(await page.locator("#artifact").isVisible(), false);
+    assert.equal(await page.locator("#risk-display").isVisible(), false);
+    assert.match(await page.locator("#checks").textContent() ?? "", /No evidence collected for this candidate/);
+    await page.screenshot({ path: resolve(outputDir, "candidate-changed.png"), fullPage: true });
     await page.keyboard.press("Tab");
     await page.keyboard.press("Enter");
   }
@@ -137,30 +152,7 @@ try {
   }
 
   if (!record) {
-    await page.emulateMedia({ colorScheme: "dark" });
-    await page.evaluate(() => scrollTo(0, 0));
-    await page.screenshot({ path: resolve(outputDir, "desktop-dark.png"), fullPage: true });
-    assert.equal(await page.locator("body").evaluate((element) => getComputedStyle(element).color), "rgb(230, 237, 245)");
-    await page.setViewportSize({ width: 375, height: 812 });
-    await page.emulateMedia({ colorScheme: "light" });
-    await page.evaluate(() => scrollTo(0, 0));
-    await page.screenshot({ path: resolve(outputDir, "mobile-light.png"), fullPage: true });
-    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
-    assert.equal(await page.locator("#verdict").evaluate((element) => element.getBoundingClientRect().top < 812), true);
-    const headerTop = await page.locator(".topbar").evaluate((element) => element.getBoundingClientRect().top);
-    await page.evaluate(() => scrollTo(0, document.body.scrollHeight));
-    assert.equal(await page.locator(".topbar").evaluate((element) => element.getBoundingClientRect().top), headerTop);
-    await page.emulateMedia({ colorScheme: "dark" });
-    await page.evaluate(() => scrollTo(0, 0));
-    await page.screenshot({ path: resolve(outputDir, "mobile-dark.png"), fullPage: true });
-    await page.setViewportSize({ width: 320, height: 720 });
-    await page.evaluate(() => { document.body.style.zoom = "1.25"; });
-    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
-    await page.evaluate(() => scrollTo(0, 0));
-    await page.screenshot({ path: resolve(outputDir, "narrow-scaled.png"), fullPage: true });
-    await page.evaluate(() => { document.body.style.zoom = ""; });
-    await page.setViewportSize({ width: 1440, height: 1080 });
-    await page.emulateMedia({ colorScheme: "light" });
+    await auditReview(page, outputDir);
     // Separate negative verification. This injected failure is never recorded.
     await page.route("**/mcp", async (route) => {
       const message = route.request().postDataJSON();
@@ -172,6 +164,9 @@ try {
     assert.equal(await page.locator("#risk").textContent(), "—");
     assert.equal(await page.locator("#candidate").inputValue(), "2.8.0-rc.2");
     assert.equal(await page.locator("#artifact").isVisible(), false);
+    assert.equal(await page.locator("#risk-display").isVisible(), false);
+    assert.equal(await page.locator("#decision-section").getAttribute("aria-busy"), "false");
+    assert.match(await page.locator("#review-status").textContent() ?? "", /Check failed/);
     await page.screenshot({ path: resolve(outputDir, "transport-error-test.png"), fullPage: true });
     console.log("BROWSER: negative test confirmed that a transport failure clears the prior SHIP verdict");
   }
